@@ -1,5 +1,6 @@
 import { Descendant } from 'slate';
 import { CustomElement, CustomText } from '../types';
+import { cleanOfficeHtml, isOfficeHtml } from './officeHtmlTransform';
 
 /**
  * Convert HTML string to Slate value
@@ -9,9 +10,15 @@ export const htmlToSlate = (html: string): Descendant[] => {
     return [{ type: 'p', children: [{ text: '' }] } as CustomElement];
   }
 
+  // Clean Office HTML if detected
+  let cleanedHtml = html;
+  if (isOfficeHtml(html)) {
+    cleanedHtml = cleanOfficeHtml(html);
+  }
+
   // Create a temporary DOM element to parse HTML
   const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
+  tempDiv.innerHTML = cleanedHtml;
 
   const parseNode = (node: Node): Descendant | Descendant[] | null => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -40,34 +47,72 @@ export const htmlToSlate = (html: string): Descendant[] => {
         children.push({ text: '' } as CustomText);
       }
 
+      // Extract style attributes for formatting
+      const htmlElement = element as HTMLElement;
+      const style = htmlElement.style;
+      
+      // Build formatting attributes from styles
+      const textFormatting: Partial<CustomText> = {};
+      if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) {
+        textFormatting.bold = true;
+      }
+      if (style.fontStyle === 'italic') {
+        textFormatting.italic = true;
+      }
+      if (style.textDecoration && style.textDecoration.includes('underline')) {
+        textFormatting.underline = true;
+      }
+      if (style.textDecoration && style.textDecoration.includes('line-through')) {
+        textFormatting.strikethrough = true;
+      }
+      if (style.color && style.color !== 'rgb(0, 0, 0)' && style.color !== '#000000') {
+        textFormatting.color = style.color;
+      }
+      if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+        textFormatting.backgroundColor = style.backgroundColor;
+      }
+      if (style.fontFamily) {
+        textFormatting.fontFamily = style.fontFamily.replace(/['"]/g, '');
+      }
+      if (style.fontSize) {
+        textFormatting.fontSize = style.fontSize;
+      }
+
       // Handle text formatting elements by applying marks to children
       if (['strong', 'b'].includes(tagName)) {
         return children.map(child => 
-          'text' in child ? { ...child, bold: true } as CustomText : child
+          'text' in child ? { ...child, bold: true, ...textFormatting } as CustomText : child
         );
       }
       
       if (['em', 'i'].includes(tagName)) {
         return children.map(child => 
-          'text' in child ? { ...child, italic: true } as CustomText : child
+          'text' in child ? { ...child, italic: true, ...textFormatting } as CustomText : child
         );
       }
       
       if (tagName === 'u') {
         return children.map(child => 
-          'text' in child ? { ...child, underline: true } as CustomText : child
+          'text' in child ? { ...child, underline: true, ...textFormatting } as CustomText : child
         );
       }
       
       if (['del', 's'].includes(tagName)) {
         return children.map(child => 
-          'text' in child ? { ...child, strikethrough: true } as CustomText : child
+          'text' in child ? { ...child, strikethrough: true, ...textFormatting } as CustomText : child
         );
       }
       
       if (['code'].includes(tagName)) {
         return children.map(child => 
-          'text' in child ? { ...child, code: true } as CustomText : child
+          'text' in child ? { ...child, code: true, ...textFormatting } as CustomText : child
+        );
+      }
+
+      // Handle span elements with inline styles
+      if (tagName === 'span' && Object.keys(textFormatting).length > 0) {
+        return children.map(child => 
+          'text' in child ? { ...child, ...textFormatting } as CustomText : child
         );
       }
 
@@ -100,6 +145,9 @@ export const htmlToSlate = (html: string): Descendant[] => {
         case 'div':
           // Treat div as paragraph if it has block content
           return { type: 'p', children: children as CustomText[] } as CustomElement;
+        case 'span':
+          // For spans without formatting, just return children
+          return children;
         default:
           // For unknown elements, return children
           return children;
@@ -136,21 +184,44 @@ export const slateToHtml = (value: Descendant[]): string => {
   const serializeNode = (node: Descendant): string => {
     if ('text' in node) {
       let text = node.text;
+      const textNode = node as CustomText;
       
-      if ((node as CustomText).bold) {
-        text = `<strong>${text}</strong>`;
+      // Build inline styles
+      const styles: string[] = [];
+      if (textNode.color) {
+        styles.push(`color: ${textNode.color}`);
       }
-      if ((node as CustomText).italic) {
-        text = `<em>${text}</em>`;
+      if (textNode.backgroundColor) {
+        styles.push(`background-color: ${textNode.backgroundColor}`);
       }
-      if ((node as CustomText).underline) {
-        text = `<u>${text}</u>`;
+      if (textNode.fontFamily) {
+        styles.push(`font-family: ${textNode.fontFamily}`);
       }
-      if ((node as CustomText).strikethrough) {
-        text = `<del>${text}</del>`;
+      if (textNode.fontSize) {
+        styles.push(`font-size: ${textNode.fontSize}`);
       }
-      if ((node as CustomText).code) {
-        text = `<code>${text}</code>`;
+      
+      const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+      
+      if (textNode.bold) {
+        text = `<strong${styleAttr}>${text}</strong>`;
+      }
+      if (textNode.italic) {
+        text = `<em${textNode.bold ? '' : styleAttr}>${text}</em>`;
+      }
+      if (textNode.underline) {
+        text = `<u${textNode.bold || textNode.italic ? '' : styleAttr}>${text}</u>`;
+      }
+      if (textNode.strikethrough) {
+        text = `<del${textNode.bold || textNode.italic || textNode.underline ? '' : styleAttr}>${text}</del>`;
+      }
+      if (textNode.code) {
+        text = `<code${textNode.bold || textNode.italic || textNode.underline || textNode.strikethrough ? '' : styleAttr}>${text}</code>`;
+      }
+      
+      // If we have styles but no formatting tags, wrap in span
+      if (styleAttr && !textNode.bold && !textNode.italic && !textNode.underline && !textNode.strikethrough && !textNode.code) {
+        text = `<span${styleAttr}>${text}</span>`;
       }
       
       return text;

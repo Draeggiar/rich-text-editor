@@ -11,12 +11,15 @@ A WYSIWYG rich-text editor component for React applications, built with TypeScri
 - ⚛️ **React Integration** - Built specifically for React applications
 - 🎯 **Extensible** - Based on Slate.js for powerful customization
 - 📦 **Library Ready** - Packaged for easy npm distribution
+- 📋 **Office Paste Support** - Smart handling of Microsoft Office clipboard content
 
 ## Supported Formatting
 
-- **Text Formatting**: Bold, Italic, Underline
+- **Text Formatting**: Bold, Italic, Underline, Strikethrough
 - **Headings**: H1, H2, H3, H4, H5, H6
 - **Lists**: Bullet lists, Numbered lists
+- **Text Styling**: Colors, fonts, background colors
+- **Office Content**: Automatic cleanup and formatting preservation from Word, Excel, PowerPoint
 - **Keyboard Shortcuts**: Ctrl/Cmd + B (Bold), Ctrl/Cmd + I (Italic), Ctrl/Cmd + U (Underline)
 
 ## Installation
@@ -43,6 +46,52 @@ function MyComponent() {
   );
 }
 ```
+
+## Microsoft Office Paste Support
+
+The editor includes intelligent handling of content copied from Microsoft Office applications (Word, Excel, PowerPoint). When you paste content from these applications, the editor:
+
+### 🧹 **Automatic Cleanup**
+- Removes Office-specific XML elements (`<o:p>`, `<w:*>`, `<v:*>`)
+- Strips MSO classes and proprietary attributes
+- Cleans up redundant inline styles and formatting
+- Eliminates conditional comments and metadata
+
+### 🎨 **Format Preservation**
+- **Text Formatting**: Bold, italic, underline, strikethrough
+- **Colors**: Text and background colors
+- **Typography**: Font families and sizes (when reasonable)
+- **Structure**: Headings, paragraphs, and lists
+- **Spacing**: Proper paragraph and line breaks
+
+### 📋 **How to Use**
+1. Copy formatted content from any Office application (Ctrl+C / Cmd+C)
+2. Paste into the editor (Ctrl+V / Cmd+V)
+3. The editor automatically detects and cleans Office markup
+4. Formatting is preserved while removing bloated HTML
+
+### 🔧 **Technical Details**
+- Detects Office content using multiple indicators (XML namespaces, MSO classes, etc.)
+- Converts inline styles to semantic HTML elements where possible
+- Preserves only relevant formatting attributes
+- Maintains clean, standards-compliant HTML output
+
+```jsx
+// Example: Office content is automatically cleaned on paste
+const MyEditor = () => {
+  const [content, setContent] = useState('');
+  
+  return (
+    <RichTextEditor
+      value={content}
+      onChange={setContent}
+      placeholder="Paste your Office content here..."
+    />
+  );
+};
+```
+
+Try the [Office Paste Demo](./office-paste-demo.html) to see this feature in action!
 
 ## API Reference
 

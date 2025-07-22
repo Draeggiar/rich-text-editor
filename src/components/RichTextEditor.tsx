@@ -1,10 +1,11 @@
 import React, { forwardRef, useImperativeHandle, useCallback, useMemo, useState } from 'react';
-import { createEditor, Descendant, Editor } from 'slate';
+import { createEditor, Descendant, Editor, Transforms } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { RichTextEditorProps, RichTextEditorRef } from '../types';
 import { EditorToolbar } from './EditorToolbar';
 import { htmlToSlate, slateToHtml } from '../utils/htmlTransform';
+import { cleanOfficeHtml, isOfficeHtml } from '../utils/officeHtmlTransform';
 
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   value = '',
@@ -91,8 +92,65 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
       element = <code>{element}</code>;
     }
 
-    return <span {...attributes}>{element}</span>;
+    // Apply inline styles for color, font, etc.
+    const style: React.CSSProperties = {};
+    if (leaf.color) {
+      style.color = leaf.color;
+    }
+    if (leaf.backgroundColor) {
+      style.backgroundColor = leaf.backgroundColor;
+    }
+    if (leaf.fontFamily) {
+      style.fontFamily = leaf.fontFamily;
+    }
+    if (leaf.fontSize) {
+      style.fontSize = leaf.fontSize;
+    }
+
+    return <span {...attributes} style={style}>{element}</span>;
   }, []);
+
+  // Handle paste events to support Office content
+  const handlePaste = useCallback((event: React.ClipboardEvent) => {
+    event.preventDefault();
+    
+    const clipboardData = event.clipboardData;
+    if (!clipboardData) return;
+
+    // Try to get HTML content first
+    const htmlData = clipboardData.getData('text/html');
+    const textData = clipboardData.getData('text/plain');
+
+    if (htmlData) {
+      // Check if it's Office content and clean it
+      let processedHtml = htmlData;
+      if (isOfficeHtml(htmlData)) {
+        processedHtml = cleanOfficeHtml(htmlData);
+      }
+
+      // Convert to Slate format and insert
+      try {
+        const fragment = htmlToSlate(processedHtml);
+        if (fragment.length > 0) {
+          Transforms.insertFragment(editor, fragment);
+          return;
+        }
+      } catch (error) {
+        console.warn('Failed to parse HTML content, falling back to plain text:', error);
+      }
+    }
+
+    // Fallback to plain text
+    if (textData) {
+      const lines = textData.split('\n');
+      lines.forEach((line, index) => {
+        if (index > 0) {
+          Transforms.insertText(editor, '\n');
+        }
+        Transforms.insertText(editor, line);
+      });
+    }
+  }, [editor]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
@@ -165,6 +223,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           style={editableStyle}
         />
       </Slate>

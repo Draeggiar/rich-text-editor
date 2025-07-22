@@ -45,6 +45,10 @@ export type FormattedText = {
   underline?: boolean;
   strikethrough?: boolean;
   code?: boolean;
+  color?: string;
+  backgroundColor?: string;
+  fontFamily?: string;
+  fontSize?: string;
 };
 
 export type CustomText = FormattedText;
