@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rich Text Editor Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .demo-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .demo-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .demo-section {
+            margin-bottom: 30px;
+        }
+        .demo-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .html-output {
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- For actual usage, you would import your built library -->
+    <script>
+        // This is a placeholder for testing the built library
+        console.log('Rich Text Editor library would be loaded here');
+        
+        const { useState } = React;
+        
+        function App() {
+            const [content, setContent] = useState('<p>Hello <strong>world</strong>! This is a <em>rich text</em> editor.</p>');
+            
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'demo-title' }, 'Rich Text Editor Demo'),
+                React.createElement('div', { className: 'demo-container' },
+                    React.createElement('div', { className: 'demo-section' },
+                        React.createElement('div', { className: 'demo-label' }, 'Rich Text Editor:'),
+                        React.createElement('div', { 
+                            style: { 
+                                border: '1px solid #ccc', 
+                                borderRadius: '4px',
+                                minHeight: '200px',
+                                padding: '12px',
+                                backgroundColor: '#fafafa'
+                            }
+                        }, 'Rich Text Editor component would be rendered here')
+                    ),
+                    React.createElement('div', { className: 'demo-section' },
+                        React.createElement('div', { className: 'demo-label' }, 'HTML Output:'),
+                        React.createElement('div', { className: 'html-output' }, content)
+                    )
+                )
+            );
+        }
+        
+        ReactDOM.render(React.createElement(App), document.getElementById('root'));
+    </script>
+</body>
+</html>
