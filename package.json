@@ -1,7 +1,7 @@
 {
   "name": "@draeggiar/rich-text-editor",
   "version": "1.0.0",
-  "description": "A WYSIWYG rich-text editor component for React based on Plate.js",
+  "description": "A WYSIWYG rich-text editor component for React based on Slate.js",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -20,7 +20,7 @@
     "typescript",
     "rich-text-editor",
     "wysiwyg",
-    "plate",
+    "slate",
     "editor",
     "component"
   ],
