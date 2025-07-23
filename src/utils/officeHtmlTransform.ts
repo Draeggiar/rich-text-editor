@@ -167,7 +167,7 @@ const convertOfficeFormatting = (element: Element): void => {
     const style = htmlEl.style;
 
     // Convert bold styling to <strong>
-    if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) {
+    if (style.fontWeight === 'bold' || (isNumeric(style.fontWeight) && parseInt(style.fontWeight) >= 700)) {
       if (!isInsideElement(htmlEl, ['strong', 'b'])) {
         wrapWithElement(htmlEl, 'strong');
       }
