@@ -50,11 +50,12 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   }, [onChange, readOnly]);
 
   // Update content when value prop changes
+  const isValueDifferent = useMemo(() => value !== currentHtml, [value, currentHtml]);
   useEffect(() => {
-    if (value !== currentHtml) {
+    if (isValueDifferent) {
       setCurrentHtml(value);
     }
-  }, [value]);
+  }, [isValueDifferent, value]);
 
   // Expose imperative methods via ref
   useImperativeHandle(ref, () => ({
