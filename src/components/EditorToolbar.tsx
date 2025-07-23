@@ -3,9 +3,7 @@ import { Editor, Element as SlateElement, Transforms } from 'slate';
 import { useSlate } from 'slate-react';
 import { CustomElement } from '../types';
 
-interface EditorToolbarProps {
-  editor?: Editor;
-}
+interface EditorToolbarProps {}
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = () => {
 
