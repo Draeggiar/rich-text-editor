@@ -203,24 +203,23 @@ export const slateToHtml = (value: Descendant[]): string => {
       
       const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
       
-      if (textNode.bold) {
-        text = `<strong${styleAttr}>${text}</strong>`;
-      }
-      if (textNode.italic) {
-        text = `<em${textNode.bold ? '' : styleAttr}>${text}</em>`;
-      }
-      if (textNode.underline) {
-        text = `<u${textNode.bold || textNode.italic ? '' : styleAttr}>${text}</u>`;
-      }
-      if (textNode.strikethrough) {
-        text = `<del${textNode.bold || textNode.italic || textNode.underline ? '' : styleAttr}>${text}</del>`;
-      }
-      if (textNode.code) {
-        text = `<code${textNode.bold || textNode.italic || textNode.underline || textNode.strikethrough ? '' : styleAttr}>${text}</code>`;
-      }
+      // Wrap text in formatting tags in a consistent order
+      const formatTags = [
+        { condition: textNode.bold, tag: 'strong' },
+        { condition: textNode.italic, tag: 'em' },
+        { condition: textNode.underline, tag: 'u' },
+        { condition: textNode.strikethrough, tag: 'del' },
+        { condition: textNode.code, tag: 'code' },
+      ];
       
-      // If we have styles but no formatting tags, wrap in span
-      if (styleAttr && !textNode.bold && !textNode.italic && !textNode.underline && !textNode.strikethrough && !textNode.code) {
+      formatTags.forEach(({ condition, tag }) => {
+        if (condition) {
+          text = `<${tag}>${text}</${tag}>`;
+        }
+      });
+      
+      // Apply styles to the outermost element if present
+      if (styleAttr) {
         text = `<span${styleAttr}>${text}</span>`;
       }
       
