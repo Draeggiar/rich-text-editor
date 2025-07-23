@@ -1,32 +1,30 @@
 import { ReactNode, CSSProperties } from 'react';
-import { BaseEditor } from 'slate';
-import { ReactEditor } from 'slate-react';
-import { HistoryEditor } from 'slate-history';
+import { Editor, TElement, TText } from '@platejs/slate';
 
-// Extend Slate types
-export type CustomEditor = BaseEditor & ReactEditor & HistoryEditor;
+// Extend Plate types
+export type CustomEditor = Editor;
 
-export type ParagraphElement = {
+export type ParagraphElement = TElement & {
   type: 'p';
   children: CustomText[];
 };
 
-export type HeadingElement = {
+export type HeadingElement = TElement & {
   type: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   children: CustomText[];
 };
 
-export type ListElement = {
+export type ListElement = TElement & {
   type: 'ul' | 'ol';
   children: ListItemElement[];
 };
 
-export type ListItemElement = {
+export type ListItemElement = TElement & {
   type: 'li';
   children: CustomText[];
 };
 
-export type BlockquoteElement = {
+export type BlockquoteElement = TElement & {
   type: 'blockquote';
   children: CustomText[];
 };
@@ -38,8 +36,7 @@ export type CustomElement =
   | ListItemElement 
   | BlockquoteElement;
 
-export type FormattedText = {
-  text: string;
+export type FormattedText = TText & {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -52,14 +49,6 @@ export type FormattedText = {
 };
 
 export type CustomText = FormattedText;
-
-declare module 'slate' {
-  interface CustomTypes {
-    Editor: CustomEditor;
-    Element: CustomElement;
-    Text: CustomText;
-  }
-}
 
 export interface RichTextEditorProps {
   /**

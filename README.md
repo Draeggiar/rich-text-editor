@@ -1,6 +1,6 @@
 # Rich Text Editor
 
-A WYSIWYG rich-text editor component for React applications, built with TypeScript and Slate.js.
+A WYSIWYG rich-text editor component for React applications, built with TypeScript and Plate.js.
 
 ## Features
 
@@ -9,7 +9,7 @@ A WYSIWYG rich-text editor component for React applications, built with TypeScri
 - 🎛️ **Controlled Component** - Full external control over editor state
 - 🔧 **TypeScript Support** - Complete type definitions included
 - ⚛️ **React Integration** - Built specifically for React applications
-- 🎯 **Extensible** - Based on Slate.js for powerful customization
+- 🎯 **Extensible** - Based on Plate.js for powerful customization
 - 📦 **Library Ready** - Packaged for easy npm distribution
 - 📋 **Office Paste Support** - Smart handling of Microsoft Office clipboard content
 
@@ -92,6 +92,79 @@ const MyEditor = () => {
 ```
 
 Try the [Office Paste Demo](./office-paste-demo.html) to see this feature in action!
+
+## Readonly Mode
+
+The editor supports a readonly mode for displaying content without allowing edits. This is perfect for previewing content or creating read-only displays.
+
+### Features
+- **Content Display**: Shows formatted content exactly as it would appear in edit mode
+- **No Editing**: Prevents all content modifications
+- **Hidden Toolbar**: Toolbar is automatically hidden in readonly mode
+- **Visual Distinction**: Different styling to indicate readonly state
+- **Accessibility**: Proper ARIA attributes for screen readers
+
+### Usage
+
+```jsx
+import React from 'react';
+import { RichTextEditor } from '@draeggiar/rich-text-editor';
+
+function ContentViewer({ htmlContent }) {
+  return (
+    <RichTextEditor
+      value={htmlContent}
+      readOnly={true}
+      showToolbar={false}  // Optional: explicitly hide toolbar
+      minHeight={150}
+      style={{ opacity: 0.9 }}  // Optional: custom styling
+    />
+  );
+}
+
+// Example with rich content
+const richContent = `
+  <h2>Project Overview</h2>
+  <p>This is a <strong>readonly</strong> display of rich content.</p>
+  <ul>
+    <li>Feature 1: Full formatting support</li>
+    <li>Feature 2: Office paste compatibility</li>
+    <li>Feature 3: TypeScript integration</li>
+  </ul>
+`;
+
+function App() {
+  return <ContentViewer htmlContent={richContent} />;
+}
+```
+
+### Styling Readonly Mode
+
+```jsx
+// Custom styling for readonly mode
+<RichTextEditor
+  value={content}
+  readOnly={true}
+  style={{
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #dee2e6',
+    borderRadius: '4px',
+  }}
+  className="my-readonly-editor"
+/>
+```
+
+```css
+/* Custom CSS for readonly styling */
+.my-readonly-editor.readonly {
+  cursor: default;
+}
+
+.my-readonly-editor.readonly [contenteditable] {
+  background-color: transparent;
+  color: #495057;
+}
+```
 
 ## API Reference
 

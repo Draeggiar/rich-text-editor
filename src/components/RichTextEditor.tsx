@@ -1,12 +1,9 @@
-import React, { forwardRef, useImperativeHandle, useCallback, useMemo, useState } from 'react';
-import { createEditor, Descendant, Editor, Transforms } from 'slate';
-import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
-import { withHistory } from 'slate-history';
+import React, { forwardRef, useImperativeHandle, useState, useCallback, useRef, useEffect } from 'react';
 import { RichTextEditorProps, RichTextEditorRef } from '../types';
 import { EditorToolbar } from './EditorToolbar';
-import { htmlToSlate, slateToHtml } from '../utils/htmlTransform';
-import { cleanOfficeHtml, isOfficeHtml } from '../utils/officeHtmlTransform';
+import { withOfficeHtmlSupport } from '../utils/officeHtmlSupport';
 
+// Plate.js based rich text editor with Office paste support and readonly mode
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   value = '',
   onChange,
@@ -20,233 +17,128 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
   maxHeight,
   minHeight = 200,
 }, ref) => {
-  
-  // Create the editor instance
-  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
 
-  // Convert HTML to Slate value - only recalculate when value prop changes
-  const initialValue = useMemo(() => {
-    return htmlToSlate(value);
-  }, [value]);
+  const [currentHtml, setCurrentHtml] = useState(value);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const [slateValue, setSlateValue] = useState<Descendant[]>(initialValue);
-
-  // Handle change events
-  const handleChange = useCallback((newValue: Descendant[]) => {
-    setSlateValue(newValue);
+  // Handle content changes for content editable
+  const handleContentChange = useCallback((event: React.FormEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     
-    if (onChange && !readOnly) {
-      const html = slateToHtml(newValue);
-      onChange(html);
+    const target = event.target as HTMLDivElement;
+    const htmlContent = target.innerHTML;
+    
+    setCurrentHtml(htmlContent);
+    if (onChange) {
+      onChange(htmlContent);
     }
   }, [onChange, readOnly]);
 
-  // Custom rendering for elements
-  const renderElement = useCallback((props: any) => {
-    const { attributes, children, element } = props;
-    
-    switch (element.type) {
-      case 'h1':
-        return <h1 {...attributes}>{children}</h1>;
-      case 'h2':
-        return <h2 {...attributes}>{children}</h2>;
-      case 'h3':
-        return <h3 {...attributes}>{children}</h3>;
-      case 'h4':
-        return <h4 {...attributes}>{children}</h4>;
-      case 'h5':
-        return <h5 {...attributes}>{children}</h5>;
-      case 'h6':
-        return <h6 {...attributes}>{children}</h6>;
-      case 'ul':
-        return <ul {...attributes}>{children}</ul>;
-      case 'ol':
-        return <ol {...attributes}>{children}</ol>;
-      case 'li':
-        return <li {...attributes}>{children}</li>;
-      case 'blockquote':
-        return <blockquote {...attributes}>{children}</blockquote>;
-      default:
-        return <p {...attributes}>{children}</p>;
-    }
-  }, []);
+  // Office paste support effect
+  useEffect(() => {
+    const element = contentRef.current;
+    if (!element || readOnly) return;
 
-  // Custom rendering for leaves (text formatting)
-  const renderLeaf = useCallback((props: any) => {
-    const { attributes, children, leaf } = props;
-    let element = children;
-
-    if (leaf.bold) {
-      element = <strong>{element}</strong>;
-    }
-    if (leaf.italic) {
-      element = <em>{element}</em>;
-    }
-    if (leaf.underline) {
-      element = <u>{element}</u>;
-    }
-    if (leaf.strikethrough) {
-      element = <del>{element}</del>;
-    }
-    if (leaf.code) {
-      element = <code>{element}</code>;
-    }
-
-    // Apply inline styles for color, font, etc.
-    const style: React.CSSProperties = {};
-    if (leaf.color) {
-      style.color = leaf.color;
-    }
-    if (leaf.backgroundColor) {
-      style.backgroundColor = leaf.backgroundColor;
-    }
-    if (leaf.fontFamily) {
-      style.fontFamily = leaf.fontFamily;
-    }
-    if (leaf.fontSize) {
-      style.fontSize = leaf.fontSize;
-    }
-
-    return <span {...attributes} style={style}>{element}</span>;
-  }, []);
-
-  // Handle paste events to support Office content
-  const handlePaste = useCallback((event: React.ClipboardEvent) => {
-    event.preventDefault();
-    
-    const clipboardData = event.clipboardData;
-    if (!clipboardData) return;
-
-    // Try to get HTML content first
-    const htmlData = clipboardData.getData('text/html');
-    const textData = clipboardData.getData('text/plain');
-
-    if (htmlData) {
-      // Check if it's Office content and clean it
-      let processedHtml = htmlData;
-      if (isOfficeHtml(htmlData)) {
-        processedHtml = cleanOfficeHtml(htmlData);
+    const cleanup = withOfficeHtmlSupport(element, (html) => {
+      setCurrentHtml(html);
+      if (onChange) {
+        onChange(html);
       }
+    });
 
-      // Convert to Slate format and insert
-      try {
-        const fragment = htmlToSlate(processedHtml);
-        if (fragment.length > 0) {
-          Transforms.insertFragment(editor, fragment);
-          return;
-        }
-      } catch (error) {
-        console.warn('Failed to parse HTML content, falling back to plain text:', error);
-      }
+    return cleanup;
+  }, [onChange, readOnly]);
+
+  // Update content when value prop changes
+  useEffect(() => {
+    if (value !== currentHtml) {
+      setCurrentHtml(value);
     }
+  }, [value]);
 
-    // Fallback to plain text
-    if (textData) {
-      const lines = textData.split('\n');
-      lines.forEach((line, index) => {
-        if (index > 0) {
-          Transforms.insertText(editor, '\n');
-        }
-        Transforms.insertText(editor, line);
-      });
-    }
-  }, [editor]);
-
-  // Handle keyboard shortcuts
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (!event.ctrlKey && !event.metaKey) {
-      return;
-    }
-
-    switch (event.key) {
-      case 'b': {
-        event.preventDefault();
-        toggleMark(editor, 'bold');
-        break;
-      }
-      case 'i': {
-        event.preventDefault();
-        toggleMark(editor, 'italic');
-        break;
-      }
-      case 'u': {
-        event.preventDefault();
-        toggleMark(editor, 'underline');
-        break;
-      }
-    }
-  }, [editor]);
-
-  // Expose methods via ref
+  // Expose imperative methods via ref
   useImperativeHandle(ref, () => ({
-    getHtml: () => {
-      return slateToHtml(slateValue);
-    },
+    getHtml: () => currentHtml,
     setHtml: (html: string) => {
-      const newValue = htmlToSlate(html);
-      setSlateValue(newValue);
+      setCurrentHtml(html);
     },
     focus: () => {
-      ReactEditor.focus(editor);
+      if (contentRef.current && !readOnly) {
+        contentRef.current.focus();
+      }
     },
     blur: () => {
-      ReactEditor.blur(editor);
+      if (contentRef.current) {
+        contentRef.current.blur();
+      }
     },
     isFocused: () => {
-      return ReactEditor.isFocused(editor);
+      return document.activeElement === contentRef.current;
     },
-  }), [editor, slateValue]);
+  }), [currentHtml, readOnly]);
 
-  const editorStyle = {
+  // Editor container styles
+  const editorStyles: React.CSSProperties = {
     minHeight: `${minHeight}px`,
-    ...(maxHeight && { maxHeight: `${maxHeight}px`, overflowY: 'auto' as const }),
+    maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+    overflow: maxHeight ? 'auto' : 'visible',
     border: '1px solid #e1e5e9',
-    borderRadius: '4px',
-    backgroundColor: '#fff',
+    borderRadius: '6px',
+    backgroundColor: readOnly ? '#f8f9fa' : '#fff',
+    opacity: readOnly ? 0.8 : 1,
     ...style,
   };
 
-  const editableStyle = {
+  const editorClassName = `rich-text-editor ${readOnly ? 'readonly' : ''} ${className}`.trim();
+
+  // Content styles
+  const contentStyles: React.CSSProperties = {
     padding: '12px',
     outline: 'none',
-    minHeight: `${minHeight - 24}px`,
+    minHeight: 'inherit',
+    cursor: readOnly ? 'default' : 'text',
   };
 
   return (
-    <div className={`rich-text-editor ${className}`} style={editorStyle}>
-      <Slate editor={editor} initialValue={slateValue} onChange={handleChange}>
-        {showToolbar && (toolbar || <EditorToolbar editor={editor} />)}
-        <Editable
-          placeholder={placeholder}
-          readOnly={readOnly}
-          autoFocus={autoFocus}
-          renderElement={renderElement}
-          renderLeaf={renderLeaf}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          style={editableStyle}
-        />
-      </Slate>
+    <div className={editorClassName} style={editorStyles}>
+      {showToolbar && !readOnly && (toolbar || <EditorToolbar />)}
+      
+      <div
+        ref={contentRef}
+        contentEditable={!readOnly}
+        suppressContentEditableWarning={true}
+        dangerouslySetInnerHTML={{ __html: currentHtml }}
+        onInput={handleContentChange}
+        autoFocus={autoFocus && !readOnly}
+        style={contentStyles}
+        data-placeholder={!readOnly ? placeholder : ''}
+        role={readOnly ? 'document' : 'textbox'}
+        aria-readonly={readOnly}
+        aria-label={readOnly ? 'Rich text content (read-only)' : 'Rich text editor'}
+      />
+      
+      {/* Placeholder and readonly styling */}
+      <style>
+        {`
+          .rich-text-editor [contenteditable]:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
+            font-style: italic;
+            pointer-events: none;
+          }
+          
+          .rich-text-editor.readonly [contenteditable] {
+            background-color: transparent;
+          }
+          
+          .rich-text-editor.readonly [contenteditable]:focus {
+            outline: none !important;
+          }
+        `}
+      </style>
     </div>
   );
 });
-
-// Helper function to toggle text marks
-const toggleMark = (editor: Editor, format: string) => {
-  const isActive = isMarkActive(editor, format);
-
-  if (isActive) {
-    Editor.removeMark(editor, format);
-  } else {
-    Editor.addMark(editor, format, true);
-  }
-};
-
-// Helper function to check if a mark is active
-const isMarkActive = (editor: Editor, format: string) => {
-  const marks = Editor.marks(editor);
-  return marks ? marks[format as keyof typeof marks] === true : false;
-};
 
 RichTextEditor.displayName = 'RichTextEditor';
 

@@ -1,13 +1,13 @@
-import { Descendant } from 'slate';
-import { CustomElement, CustomText } from '../types';
+import { TElement, TText } from '@platejs/slate';
+import { CustomText } from '../types';
 import { cleanOfficeHtml, isOfficeHtml } from './officeHtmlTransform';
 
 /**
- * Convert HTML string to Slate value
+ * Convert HTML string to Plate value
  */
-export const htmlToSlate = (html: string): Descendant[] => {
+export const htmlToSlate = (html: string): TElement[] => {
   if (!html || html.trim() === '') {
-    return [{ type: 'p', children: [{ text: '' }] } as CustomElement];
+    return [{ type: 'p', children: [{ text: '' }] }];
   }
 
   // Clean Office HTML if detected
@@ -20,248 +20,230 @@ export const htmlToSlate = (html: string): Descendant[] => {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = cleanedHtml;
 
-  const parseNode = (node: Node): Descendant | Descendant[] | null => {
+  const parseNode = (node: Node): TElement | TText | null => {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent || '';
-      return text ? ({ text } as CustomText) : null;
+      return text ? ({ text } as TText) : null;
     }
 
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as Element;
       const tagName = element.tagName.toLowerCase();
       
-      const children: Descendant[] = [];
+      const children: (TElement | TText)[] = [];
       Array.from(element.childNodes).forEach(childNode => {
         const parsed = parseNode(childNode);
         if (parsed) {
-          if (Array.isArray(parsed)) {
-            children.push(...parsed);
-          } else {
-            children.push(parsed);
-          }
+          children.push(parsed);
         }
       });
       
       // If no children, add empty text node
       if (children.length === 0) {
-        children.push({ text: '' } as CustomText);
+        children.push({ text: '' } as TText);
       }
 
       // Extract style attributes for formatting
-      const htmlElement = element as HTMLElement;
-      const style = htmlElement.style;
+      const computedStyle = (element as HTMLElement).style;
+      const marks: Partial<CustomText> = {};
       
-      // Build formatting attributes from styles
-      const textFormatting: Partial<CustomText> = {};
-      if (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700) {
-        textFormatting.bold = true;
+      if (computedStyle.fontWeight === 'bold' || parseInt(computedStyle.fontWeight) >= 700) {
+        marks.bold = true;
       }
-      if (style.fontStyle === 'italic') {
-        textFormatting.italic = true;
+      if (computedStyle.fontStyle === 'italic') {
+        marks.italic = true;
       }
-      if (style.textDecoration && style.textDecoration.includes('underline')) {
-        textFormatting.underline = true;
+      if (computedStyle.textDecoration?.includes('underline')) {
+        marks.underline = true;
       }
-      if (style.textDecoration && style.textDecoration.includes('line-through')) {
-        textFormatting.strikethrough = true;
+      if (computedStyle.textDecoration?.includes('line-through')) {
+        marks.strikethrough = true;
       }
-      if (style.color && style.color !== 'rgb(0, 0, 0)' && style.color !== '#000000') {
-        textFormatting.color = style.color;
+      if (computedStyle.color && computedStyle.color !== 'rgb(0, 0, 0)') {
+        marks.color = computedStyle.color;
       }
-      if (style.backgroundColor && style.backgroundColor !== 'transparent') {
-        textFormatting.backgroundColor = style.backgroundColor;
+      if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'transparent') {
+        marks.backgroundColor = computedStyle.backgroundColor;
       }
-      if (style.fontFamily) {
-        textFormatting.fontFamily = style.fontFamily.replace(/['"]/g, '');
+      if (computedStyle.fontFamily) {
+        marks.fontFamily = computedStyle.fontFamily;
       }
-      if (style.fontSize) {
-        textFormatting.fontSize = style.fontSize;
+      if (computedStyle.fontSize) {
+        marks.fontSize = computedStyle.fontSize;
       }
 
-      // Handle text formatting elements by applying marks to children
-      if (['strong', 'b'].includes(tagName)) {
-        return children.map(child => 
-          'text' in child ? { ...child, bold: true, ...textFormatting } as CustomText : child
-        );
-      }
-      
-      if (['em', 'i'].includes(tagName)) {
-        return children.map(child => 
-          'text' in child ? { ...child, italic: true, ...textFormatting } as CustomText : child
-        );
-      }
-      
-      if (tagName === 'u') {
-        return children.map(child => 
-          'text' in child ? { ...child, underline: true, ...textFormatting } as CustomText : child
-        );
-      }
-      
-      if (['del', 's'].includes(tagName)) {
-        return children.map(child => 
-          'text' in child ? { ...child, strikethrough: true, ...textFormatting } as CustomText : child
-        );
-      }
-      
-      if (['code'].includes(tagName)) {
-        return children.map(child => 
-          'text' in child ? { ...child, code: true, ...textFormatting } as CustomText : child
-        );
+      // Apply marks to text children
+      if (Object.keys(marks).length > 0) {
+        children.forEach(child => {
+          if ('text' in child) {
+            Object.assign(child, marks);
+          }
+        });
       }
 
-      // Handle span elements with inline styles
-      if (tagName === 'span' && Object.keys(textFormatting).length > 0) {
-        return children.map(child => 
-          'text' in child ? { ...child, ...textFormatting } as CustomText : child
-        );
-      }
-
-      // Handle block elements
+      // Handle specific HTML elements
       switch (tagName) {
-        case 'p':
-          return { type: 'p', children: children as CustomText[] } as CustomElement;
         case 'h1':
-          return { type: 'h1', children: children as CustomText[] } as CustomElement;
         case 'h2':
-          return { type: 'h2', children: children as CustomText[] } as CustomElement;
         case 'h3':
-          return { type: 'h3', children: children as CustomText[] } as CustomElement;
         case 'h4':
-          return { type: 'h4', children: children as CustomText[] } as CustomElement;
         case 'h5':
-          return { type: 'h5', children: children as CustomText[] } as CustomElement;
         case 'h6':
-          return { type: 'h6', children: children as CustomText[] } as CustomElement;
+          return { type: tagName, children } as TElement;
+        
         case 'ul':
-          return { type: 'ul', children: children as any[] } as CustomElement;
         case 'ol':
-          return { type: 'ol', children: children as any[] } as CustomElement;
+          return { type: tagName, children } as TElement;
+          
         case 'li':
-          return { type: 'li', children: children as CustomText[] } as CustomElement;
+          return { type: 'li', children } as TElement;
+          
         case 'blockquote':
-          return { type: 'blockquote', children: children as CustomText[] } as CustomElement;
-        case 'br':
-          return { text: '\n' } as CustomText;
+          return { type: 'blockquote', children } as TElement;
+          
+        case 'strong':
+        case 'b':
+          // Apply bold mark to all text children
+          children.forEach(child => {
+            if ('text' in child) {
+              child.bold = true;
+            }
+          });
+          // Return children directly (inline element)
+          return children.length === 1 ? children[0] : null;
+          
+        case 'em':
+        case 'i':
+          // Apply italic mark to all text children
+          children.forEach(child => {
+            if ('text' in child) {
+              child.italic = true;
+            }
+          });
+          return children.length === 1 ? children[0] : null;
+          
+        case 'u':
+          // Apply underline mark to all text children
+          children.forEach(child => {
+            if ('text' in child) {
+              child.underline = true;
+            }
+          });
+          return children.length === 1 ? children[0] : null;
+          
+        case 'del':
+        case 's':
+        case 'strike':
+          // Apply strikethrough mark to all text children
+          children.forEach(child => {
+            if ('text' in child) {
+              child.strikethrough = true;
+            }
+          });
+          return children.length === 1 ? children[0] : null;
+          
+        case 'code':
+          // Apply code mark to all text children
+          children.forEach(child => {
+            if ('text' in child) {
+              child.code = true;
+            }
+          });
+          return children.length === 1 ? children[0] : null;
+          
+        case 'p':
         case 'div':
-          // Treat div as paragraph if it has block content
-          return { type: 'p', children: children as CustomText[] } as CustomElement;
-        case 'span':
-          // For spans without formatting, just return children
-          return children;
         default:
-          // For unknown elements, return children
-          return children;
+          // Default to paragraph
+          return { type: 'p', children } as TElement;
       }
     }
 
     return null;
   };
 
-  const result: Descendant[] = [];
+  const result: TElement[] = [];
   Array.from(tempDiv.childNodes).forEach(node => {
     const parsed = parseNode(node);
-    if (parsed) {
-      if (Array.isArray(parsed)) {
-        result.push(...parsed);
-      } else {
-        result.push(parsed);
-      }
+    if (parsed && 'type' in parsed) {
+      result.push(parsed as TElement);
     }
   });
-  
-  // Ensure we have at least one paragraph
-  return result.length > 0 ? result : [{ type: 'p', children: [{ text: '' }] } as CustomElement];
+
+  return result.length > 0 ? result : [{ type: 'p', children: [{ text: '' }] }];
 };
 
 /**
- * Convert Slate value to HTML string
+ * Convert Plate value to HTML string
  */
-export const slateToHtml = (value: Descendant[]): string => {
-  if (!value || value.length === 0) {
-    return '';
-  }
-
-  const serializeNode = (node: Descendant): string => {
+export const slateToHtml = (value: TElement[]): string => {
+  const serialize = (node: TElement | TText): string => {
     if ('text' in node) {
       let text = node.text;
-      const textNode = node as CustomText;
       
-      // Build inline styles
+      // Apply text formatting
+      if (node.bold) {
+        text = `<strong>${text}</strong>`;
+      }
+      if (node.italic) {
+        text = `<em>${text}</em>`;
+      }
+      if (node.underline) {
+        text = `<u>${text}</u>`;
+      }
+      if (node.strikethrough) {
+        text = `<del>${text}</del>`;
+      }
+      if (node.code) {
+        text = `<code>${text}</code>`;
+      }
+      
+      // Apply color and other styles
       const styles: string[] = [];
-      if (textNode.color) {
-        styles.push(`color: ${textNode.color}`);
+      if (node.color) {
+        styles.push(`color: ${node.color}`);
       }
-      if (textNode.backgroundColor) {
-        styles.push(`background-color: ${textNode.backgroundColor}`);
+      if (node.backgroundColor) {
+        styles.push(`background-color: ${node.backgroundColor}`);
       }
-      if (textNode.fontFamily) {
-        styles.push(`font-family: ${textNode.fontFamily}`);
+      if (node.fontFamily) {
+        styles.push(`font-family: ${node.fontFamily}`);
       }
-      if (textNode.fontSize) {
-        styles.push(`font-size: ${textNode.fontSize}`);
-      }
-      
-      const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
-      
-      // Wrap text in formatting tags in a consistent order
-      const formatTags = [
-        { condition: textNode.bold, tag: 'strong' },
-        { condition: textNode.italic, tag: 'em' },
-        { condition: textNode.underline, tag: 'u' },
-        { condition: textNode.strikethrough, tag: 'del' },
-        { condition: textNode.code, tag: 'code' },
-      ];
-      
-      formatTags.forEach(({ condition, tag }) => {
-        if (condition) {
-          text = `<${tag}>${text}</${tag}>`;
-        }
-      });
-      
-      // Apply styles to the outermost element if present
-      if (styleAttr) {
-        text = `<span${styleAttr}>${text}</span>`;
+      if (node.fontSize) {
+        styles.push(`font-size: ${node.fontSize}`);
       }
       
-      return text;
+      if (styles.length > 0) {
+        text = `<span style="${styles.join('; ')}">${text}</span>`;
+      }
+      
+      return text as string;
     }
 
-    const element = node as CustomElement;
-    const children = 'children' in element && element.children 
-      ? element.children.map(serializeNode).join('') 
-      : '';
-
-    if ('type' in element) {
-      switch (element.type) {
-        case 'p':
-          return `<p>${children}</p>`;
-        case 'h1':
-          return `<h1>${children}</h1>`;
-        case 'h2':
-          return `<h2>${children}</h2>`;
-        case 'h3':
-          return `<h3>${children}</h3>`;
-        case 'h4':
-          return `<h4>${children}</h4>`;
-        case 'h5':
-          return `<h5>${children}</h5>`;
-        case 'h6':
-          return `<h6>${children}</h6>`;
-        case 'ul':
-          return `<ul>${children}</ul>`;
-        case 'ol':
-          return `<ol>${children}</ol>`;
-        case 'li':
-          return `<li>${children}</li>`;
-        case 'blockquote':
-          return `<blockquote>${children}</blockquote>`;
-        default:
-          return children;
-      }
+    const children = node.children.map(child => serialize(child)).join('');
+    
+    switch (node.type) {
+      case 'h1':
+      case 'h2':
+      case 'h3':
+      case 'h4':
+      case 'h5':
+      case 'h6':
+        return `<${node.type}>${children}</${node.type}>`;
+      case 'p':
+        return `<p>${children}</p>`;
+      case 'ul':
+        return `<ul>${children}</ul>`;
+      case 'ol':
+        return `<ol>${children}</ol>`;
+      case 'li':
+        return `<li>${children}</li>`;
+      case 'blockquote':
+        return `<blockquote>${children}</blockquote>`;
+      default:
+        return `<p>${children}</p>`;
     }
-
-    return children;
   };
 
-  return value.map(serializeNode).join('');
+  return value.map(node => serialize(node)).join('');
 };

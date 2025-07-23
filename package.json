@@ -1,7 +1,7 @@
 {
   "name": "@draeggiar/rich-text-editor",
   "version": "1.0.0",
-  "description": "A WYSIWYG rich-text editor component for React based on Slate.js",
+  "description": "A WYSIWYG rich-text editor component for React based on Plate.js",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -20,7 +20,7 @@
     "typescript",
     "rich-text-editor",
     "wysiwyg",
-    "slate",
+    "plate",
     "editor",
     "component"
   ],
@@ -45,8 +45,9 @@
     "vite-plugin-dts": "^3.0.0"
   },
   "dependencies": {
-    "slate": "^0.103.0",
-    "slate-history": "^0.109.0",
-    "slate-react": "^0.110.0"
+    "platejs": "^49.1.5",
+    "@platejs/basic-nodes": "^49.0.0",
+    "@platejs/list": "^49.0.0",
+    "@platejs/autoformat": "^49.0.0"
   }
 }
