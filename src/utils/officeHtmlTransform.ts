@@ -307,7 +307,11 @@ const mergeConsecutiveFormattingElements = (element: Element): void => {
         if (current.nextSibling === next && 
             current.parentNode === next.parentNode) {
           // Merge the elements
-          current.appendChild(document.createTextNode(' '));
+          const currentEndsWithSpace = current.textContent?.endsWith(' ') || false;
+          const nextStartsWithSpace = next.textContent?.startsWith(' ') || false;
+          if (!currentEndsWithSpace && !nextStartsWithSpace) {
+            current.appendChild(document.createTextNode(' '));
+          }
           while (next.firstChild) {
             current.appendChild(next.firstChild);
           }
