@@ -107,7 +107,7 @@ const cleanInlineStyles = (element: HTMLElement): void => {
   const preservedStyles: { [key: string]: string } = {};
 
   // Preserve font formatting
-  if (style.fontWeight && (style.fontWeight === 'bold' || parseInt(style.fontWeight) >= 700)) {
+  if (style.fontWeight && (style.fontWeight === 'bold' || (!isNaN(parseInt(style.fontWeight)) && parseInt(style.fontWeight) >= 700))) {
     // Will be handled by converting to <strong>
   }
   if (style.fontStyle === 'italic') {
