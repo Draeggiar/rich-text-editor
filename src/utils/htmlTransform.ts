@@ -47,7 +47,8 @@ export const htmlToSlate = (html: string): TElement[] => {
       const computedStyle = (element as HTMLElement).style;
       const marks: Partial<CustomText> = {};
       
-      if (computedStyle.fontWeight === 'bold' || parseInt(computedStyle.fontWeight) >= 700) {
+      const fontWeight = computedStyle.fontWeight;
+      if (fontWeight === 'bold' || (!isNaN(parseInt(fontWeight)) && parseInt(fontWeight) >= 700)) {
         marks.bold = true;
       }
       if (computedStyle.fontStyle === 'italic') {
