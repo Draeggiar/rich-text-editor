@@ -33,8 +33,8 @@ export const cleanOfficeHtml = (html: string): string => {
 const removeOfficeXmlElements = (element: Element): void => {
   // Remove Office-specific elements like <o:p>, <w:*>, <v:*>, etc.
   const officeSelectors = [
-    'o\\:p', 'w\\:*', 'v\\:*', 'm\\:*', // Office XML elements
-    '[class*="mso"]', // MSO classes
+    'o\\:p', // Office paragraph elements
+    '*[class*="mso"]', // MSO classes
     'meta[name*="generator"]', // Office generator meta tags
     'link[rel="File-List"]', // Office file lists
     'xml', 'style' // XML and embedded styles
@@ -46,6 +46,41 @@ const removeOfficeXmlElements = (element: Element): void => {
       elements.forEach(el => el.remove());
     } catch (e) {
       // Ignore invalid selectors for some older browsers
+    }
+  });
+
+  // Handle elements with XML namespaces using getElementsByTagName
+  const xmlNamespaceTags = ['w:sdt', 'w:r', 'w:t', 'w:p', 'v:shape', 'v:textbox', 'o:p'];
+  xmlNamespaceTags.forEach(tagName => {
+    try {
+      // Find elements by tag name (including namespace)
+      const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode: (node) => {
+            const el = node as Element;
+            return el.nodeName.toLowerCase().includes(tagName.toLowerCase()) ? 
+              NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+          }
+        }
+      );
+
+      const elementsToRemove: Element[] = [];
+      let node;
+      while (node = walker.nextNode()) {
+        elementsToRemove.push(node as Element);
+      }
+      
+      elementsToRemove.forEach(el => el.remove());
+    } catch (e) {
+      // Fallback: try simple approach
+      try {
+        const elements = element.querySelectorAll(tagName);
+        elements.forEach(el => el.remove());
+      } catch (e2) {
+        // Ignore if both approaches fail
+      }
     }
   });
 };
@@ -210,6 +245,13 @@ const convertOfficeFormatting = (element: Element): void => {
       }
     }
   });
+};
+
+/**
+ * Check if a string represents a numeric value
+ */
+const isNumeric = (value: string): boolean => {
+  return !isNaN(Number(value));
 };
 
 /**

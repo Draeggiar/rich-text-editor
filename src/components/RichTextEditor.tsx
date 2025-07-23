@@ -49,19 +49,28 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     return cleanup;
   }, [onChange, readOnly]);
 
-  // Update content when value prop changes
-  const isValueDifferent = useMemo(() => value !== currentHtml, [value, currentHtml]);
+  // Handle auto focus
   useEffect(() => {
-    if (isValueDifferent) {
+    if (autoFocus && !readOnly && contentRef.current) {
+      contentRef.current.focus();
+    }
+  }, [autoFocus, readOnly]);
+
+  // Update content when value prop changes
+  useEffect(() => {
+    if (value !== currentHtml) {
       setCurrentHtml(value);
     }
-  }, [isValueDifferent, value]);
+  }, [value, currentHtml]);
 
   // Expose imperative methods via ref
   useImperativeHandle(ref, () => ({
     getHtml: () => currentHtml,
     setHtml: (html: string) => {
       setCurrentHtml(html);
+      if (onChange) {
+        onChange(html);
+      }
     },
     focus: () => {
       if (contentRef.current && !readOnly) {
@@ -76,7 +85,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
     isFocused: () => {
       return document.activeElement === contentRef.current;
     },
-  }), [currentHtml, readOnly]);
+  }), [currentHtml, readOnly, onChange]);
 
   // Editor container styles
   const editorStyles: React.CSSProperties = {
@@ -110,7 +119,6 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(({
         suppressContentEditableWarning={true}
         dangerouslySetInnerHTML={{ __html: currentHtml }}
         onInput={handleContentChange}
-        autoFocus={autoFocus && !readOnly}
         style={contentStyles}
         data-placeholder={!readOnly ? placeholder : ''}
         role={readOnly ? 'document' : 'textbox'}

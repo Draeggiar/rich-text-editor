@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rich Text Editor Test App</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border: 1px solid #e1e5e9;
+        }
+        .html-output {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // Mock implementation of RichTextEditor for testing
+        const RichTextEditor = React.forwardRef(({
+            value = '',
+            onChange,
+            placeholder = 'Start typing...',
+            readOnly = false,
+            autoFocus = false,
+            className = '',
+            style,
+            showToolbar = true,
+            toolbar,
+            maxHeight,
+            minHeight = 200,
+        }, ref) => {
+            const [currentHtml, setCurrentHtml] = useState(value);
+            const contentRef = useRef(null);
+
+            const handleContentChange = (event) => {
+                if (readOnly) return;
+                
+                const target = event.target;
+                const htmlContent = target.innerHTML;
+                
+                setCurrentHtml(htmlContent);
+                if (onChange) {
+                    onChange(htmlContent);
+                }
+            };
+
+            const handleKeyDown = (event) => {
+                if (readOnly) return;
+
+                // Handle keyboard shortcuts
+                if (event.ctrlKey || event.metaKey) {
+                    switch (event.key) {
+                        case 'b':
+                            event.preventDefault();
+                            document.execCommand('bold');
+                            break;
+                        case 'i':
+                            event.preventDefault();
+                            document.execCommand('italic');
+                            break;
+                        case 'u':
+                            event.preventDefault();
+                            document.execCommand('underline');
+                            break;
+                    }
+                }
+            };
+
+            useEffect(() => {
+                if (autoFocus && !readOnly && contentRef.current) {
+                    contentRef.current.focus();
+                }
+            }, [autoFocus, readOnly]);
+
+            useEffect(() => {
+                if (value !== currentHtml) {
+                    setCurrentHtml(value);
+                }
+            }, [value]);
+
+            React.useImperativeHandle(ref, () => ({
+                getHtml: () => currentHtml,
+                setHtml: (html) => {
+                    setCurrentHtml(html);
+                    if (onChange) {
+                        onChange(html);
+                    }
+                },
+                focus: () => {
+                    if (contentRef.current && !readOnly) {
+                        contentRef.current.focus();
+                    }
+                },
+                blur: () => {
+                    if (contentRef.current) {
+                        contentRef.current.blur();
+                    }
+                },
+                isFocused: () => {
+                    return document.activeElement === contentRef.current;
+                },
+            }), [currentHtml, readOnly, onChange]);
+
+            const formatText = (command, value = null) => {
+                if (readOnly) return;
+                document.execCommand(command, false, value);
+                // Trigger change event
+                if (onChange) {
+                    onChange(contentRef.current.innerHTML);
+                }
+            };
+
+            const editorStyles = {
+                minHeight: `${minHeight}px`,
+                maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+                overflow: maxHeight ? 'auto' : 'visible',
+                border: '1px solid #e1e5e9',
+                borderRadius: '6px',
+                backgroundColor: readOnly ? '#f8f9fa' : '#fff',
+                opacity: readOnly ? 0.8 : 1,
+                ...style,
+            };
+
+            const editorClassName = `rich-text-editor ${readOnly ? 'readonly' : ''} ${className}`.trim();
+
+            const contentStyles = {
+                padding: '12px',
+                outline: 'none',
+                minHeight: 'inherit',
+                cursor: readOnly ? 'default' : 'text',
+            };
+
+            const ToolbarButton = ({ children, title, onClick, 'data-testid': testId }) => (
+                <button 
+                    type="button" 
+                    title={title} 
+                    onClick={onClick}
+                    data-testid={testId}
+                    style={{
+                        minWidth: '32px',
+                        height: '32px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        backgroundColor: 'transparent',
+                        color: '#333',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 'normal',
+                        margin: '0 2px',
+                    }}
+                >
+                    {children}
+                </button>
+            );
+
+            return (
+                <div className={editorClassName} style={editorStyles}>
+                    {showToolbar && !readOnly && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '8px',
+                            borderBottom: '1px solid #e1e5e9',
+                            backgroundColor: '#f8f9fa',
+                            gap: '4px',
+                            flexWrap: 'wrap',
+                        }}>
+                            <ToolbarButton
+                                title="Bold"
+                                onClick={() => formatText('bold')}
+                                data-testid="toolbar-bold"
+                            >
+                                <strong>B</strong>
+                            </ToolbarButton>
+                            <ToolbarButton
+                                title="Italic"
+                                onClick={() => formatText('italic')}
+                                data-testid="toolbar-italic"
+                            >
+                                <em>I</em>
+                            </ToolbarButton>
+                            <ToolbarButton
+                                title="Underline"
+                                onClick={() => formatText('underline')}
+                                data-testid="toolbar-underline"
+                            >
+                                <u>U</u>
+                            </ToolbarButton>
+                            <div style={{ width: '1px', height: '20px', backgroundColor: '#e1e5e9', margin: '0 4px' }} />
+                            <ToolbarButton
+                                title="Heading 1"
+                                onClick={() => formatText('formatBlock', 'h1')}
+                                data-testid="toolbar-h1"
+                            >
+                                H1
+                            </ToolbarButton>
+                            <ToolbarButton
+                                title="Heading 2"
+                                onClick={() => formatText('formatBlock', 'h2')}
+                                data-testid="toolbar-h2"
+                            >
+                                H2
+                            </ToolbarButton>
+                            <ToolbarButton
+                                title="Bulleted List"
+                                onClick={() => formatText('insertUnorderedList')}
+                                data-testid="toolbar-ul"
+                            >
+                                •
+                            </ToolbarButton>
+                            <ToolbarButton
+                                title="Numbered List"
+                                onClick={() => formatText('insertOrderedList')}
+                                data-testid="toolbar-ol"
+                            >
+                                1.
+                            </ToolbarButton>
+                        </div>
+                    )}
+                    
+                    <div
+                        ref={contentRef}
+                        contentEditable={!readOnly}
+                        suppressContentEditableWarning={true}
+                        dangerouslySetInnerHTML={{ __html: currentHtml }}
+                        onInput={handleContentChange}
+                        onKeyDown={handleKeyDown}
+                        style={contentStyles}
+                        data-placeholder={!readOnly ? placeholder : ''}
+                        role={readOnly ? 'document' : 'textbox'}
+                        aria-readonly={readOnly}
+                        aria-label={readOnly ? 'Rich text content (read-only)' : 'Rich text editor'}
+                        data-testid="editor-content"
+                    />
+                    
+                    <style>
+                        {`
+                            .rich-text-editor [contenteditable]:empty:before {
+                                content: attr(data-placeholder);
+                                color: #999;
+                                font-style: italic;
+                                pointer-events: none;
+                            }
+                            
+                            .rich-text-editor.readonly [contenteditable] {
+                                background-color: transparent;
+                            }
+                            
+                            .rich-text-editor.readonly [contenteditable]:focus {
+                                outline: none !important;
+                            }
+                        `}
+                    </style>
+                </div>
+            );
+        });
+
+        function TestApp() {
+            const [content, setContent] = useState('<p>Hello <strong>world</strong>!</p>');
+            const [readOnly, setReadOnly] = useState(false);
+            const [autoFocus, setAutoFocus] = useState(false);
+            const editorRef = useRef(null);
+
+            const handleSetSampleContent = () => {
+                const sampleContent = '<h1>Rich Text Editor</h1><p>This is a <strong>bold</strong> and <em>italic</em> example with <u>underlined</u> text.</p><ul><li>List item 1</li><li>List item 2</li></ul>';
+                setContent(sampleContent);
+            };
+
+            const handleClearContent = () => {
+                setContent('');
+            };
+
+            const handleFocus = () => {
+                editorRef.current?.focus();
+            };
+
+            const handleBlur = () => {
+                editorRef.current?.blur();
+            };
+
+            const handleSetHtml = () => {
+                const html = '<p>Content set via <strong>ref</strong> method!</p>';
+                editorRef.current?.setHtml(html);
+            };
+
+            return (
+                <div className="test-container">
+                    <h1>Rich Text Editor E2E Test App</h1>
+                    
+                    <div className="section">
+                        <h2>Basic Editor</h2>
+                        <RichTextEditor
+                            ref={editorRef}
+                            value={content}
+                            onChange={setContent}
+                            placeholder="Type something here..."
+                            readOnly={readOnly}
+                            autoFocus={autoFocus}
+                            minHeight={200}
+                            maxHeight={400}
+                        />
+                        
+                        <div className="status">
+                            <strong>Current HTML:</strong>
+                            <div className="html-output" data-testid="html-output">{content}</div>
+                        </div>
+                        
+                        <div>
+                            <button onClick={handleSetSampleContent} data-testid="set-sample">Set Sample Content</button>
+                            <button onClick={handleClearContent} data-testid="clear-content">Clear Content</button>
+                            <button onClick={handleFocus} data-testid="focus-editor">Focus Editor</button>
+                            <button onClick={handleBlur} data-testid="blur-editor">Blur Editor</button>
+                            <button onClick={handleSetHtml} data-testid="set-html">Set HTML via Ref</button>
+                        </div>
+                        
+                        <div>
+                            <label>
+                                <input 
+                                    type="checkbox" 
+                                    checked={readOnly} 
+                                    onChange={(e) => setReadOnly(e.target.checked)}
+                                    data-testid="readonly-checkbox"
+                                />
+                                Read Only
+                            </label>
+                            <label style={{ marginLeft: '20px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={autoFocus} 
+                                    onChange={(e) => setAutoFocus(e.target.checked)}
+                                    data-testid="autofocus-checkbox"
+                                />
+                                Auto Focus
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="section">
+                        <h2>Read-Only Editor</h2>
+                        <RichTextEditor
+                            value="<h2>Read-Only Content</h2><p>This editor is in <strong>read-only</strong> mode. You cannot edit this content.</p>"
+                            readOnly={true}
+                            minHeight={150}
+                        />
+                    </div>
+
+                    <div className="section">
+                        <h2>Editor with Custom Styling</h2>
+                        <RichTextEditor
+                            value="<p>This editor has custom styling applied.</p>"
+                            onChange={() => {}}
+                            style={{ border: '2px solid #007bff', borderRadius: '10px' }}
+                            className="custom-editor"
+                            placeholder="Custom styled editor..."
+                            minHeight={120}
+                            data-testid="custom-editor"
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TestApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

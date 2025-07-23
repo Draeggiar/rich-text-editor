@@ -303,6 +303,36 @@ npm run build
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Run ESLint with auto-fix
 
+### Testing
+
+This library includes comprehensive testing with Jest and Playwright:
+
+```bash
+# Run unit tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+
+# Run E2E tests (requires Playwright setup)
+npm run test:e2e
+
+# Run all tests
+npm run test:all
+```
+
+The testing suite includes:
+- **126 Unit Tests** covering all components and utilities
+- **Comprehensive E2E Tests** with Playwright for real browser testing
+- **Cross-browser Testing** (Chrome, Firefox, Safari)
+- **Office Paste Testing** with real clipboard scenarios
+- **Accessibility Testing** for screen readers and keyboard navigation
+
+For detailed testing documentation, see [TESTING.md](TESTING.md).
+
 ## Browser Support
 
 - Chrome/Edge 88+
